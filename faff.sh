@@ -286,8 +286,11 @@ function check_model() {
   local spin_char
   local i=0
 
+  # Define the model existence check query
+  local model_check_query="curl -s \"${OLLAMA_API_BASE}/tags\" | jq -e --arg M \"$model\" '.models[] | select(.name == \$M)'"
+
   # Check if model exists
-  if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+  if ! eval "$model_check_query" >/dev/null; then
     echo "Model '$model' not found. Attempting to pull it automatically..." >&2
     echo "Downloading model '$model'. This may take several minutes..." >&2
     
@@ -337,7 +340,7 @@ function check_model() {
     # Give Ollama a moment to index the new model
     sleep 2 
     # Re-check if model was downloaded successfully
-    if curl -s "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+    if eval "$model_check_query" >/dev/null; then
       echo -e "\\rModel '$model' downloaded successfully!                                   " >&2
       return 0
     else

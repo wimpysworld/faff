@@ -5,7 +5,7 @@
 # This script automatically generates conventional commit messages
 # from your git diffs using an Ollama LLM.
 
-MODEL_NAME="${1:-qwen2.5-coder:7b}"
+OLLAMA_MODEL=${OLLAMA_MODEL:-"qwen2.5-coder:7b"}
 OLLAMA_HOST=${OLLAMA_HOST:-"localhost"}
 OLLAMA_PORT=${OLLAMA_PORT:-"11434"}
 OLLAMA_BASE_URL="http://${OLLAMA_HOST}:${OLLAMA_PORT}"
@@ -73,7 +73,7 @@ EOF
     PAYLOAD_FILE=$(mktemp)
 
     jq -n \
-      --arg model "$MODEL_NAME" \
+      --arg model "$OLLAMA_MODEL" \
       --rawfile system "$SYSTEM_PROMPT_FILE" \
       --argjson diff_content "$GIT_DIFF" \
       '{
@@ -178,16 +178,16 @@ function check_ollama_service_and_model() {
     echo "Ollama service is running."
 
     # Check if model exists
-    if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e ".models[] | select(.name==\"$MODEL_NAME\")" >/dev/null; then
-        echo "Model '$MODEL_NAME' not found locally. Attempting to pull it via Ollama CLI..." >&2
-        if ollama pull "$MODEL_NAME"; then
-            echo "Model '$MODEL_NAME' pulled successfully."
+    if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e ".models[] | select(.name==\"$OLLAMA_MODEL\")" >/dev/null; then
+        echo "Model '$OLLAMA_MODEL' not found locally. Attempting to pull it via Ollama CLI..." >&2
+        if ollama pull "$OLLAMA_MODEL"; then
+            echo "Model '$OLLAMA_MODEL' pulled successfully."
         else
-            echo "Error: Failed to pull model '$MODEL_NAME'. Please ensure the model name is correct and Ollama can access it." >&2
+            echo "Error: Failed to pull model '$OLLAMA_MODEL'. Please ensure the model name is correct and Ollama can access it." >&2
             exit 1
         fi
     else
-        echo "Model '$MODEL_NAME' is available."
+        echo "Model '$OLLAMA_MODEL' is available."
     fi
 }
 

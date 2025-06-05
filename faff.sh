@@ -375,15 +375,19 @@ function confirm_commit() {
 
     read -p "Do you want to use this commit message? (y/n): " choice
 
-    if [[ $choice == "y" || $choice == "Y" ]]; then
-        git commit -m "$generated_message"
-        echo "Changes committed with the generated message."
-    elif [[ $choice == "n" || $choice == "N" ]]; then
-        echo "Generated commit message only (not committed):"
-        echo "$generated_message"
-    else
-        echo "Invalid input. Commit aborted."
-    fi
+    case "${choice,,}" in
+        y|yes)
+            git commit -m "$generated_message"
+            echo "Changes committed with the generated message."
+            ;;
+        n|no)
+            echo "Generated commit message only (not committed):"
+            echo "$generated_message"
+            ;;
+        *)
+            echo "Invalid input. Commit aborted."
+            ;;
+    esac
 }
 
 # Main script logic

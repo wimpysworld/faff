@@ -16,10 +16,6 @@ TIMEOUT=180
 
 # Function to check dependencies
 function check_dependencies() {
-    if ! command -v ollama &>/dev/null; then
-        echo "Error: Ollama CLI is not installed. Please install it and try again."
-        exit 1
-    fi
     if ! command -v curl &>/dev/null; then
         echo "Error: curl is not installed. Please install it and try again."
         exit 1
@@ -215,10 +211,100 @@ EOF
 
     local final_commit_message="${type}: ${description}"
     if [ -n "$body" ] && [ "$body" != "null" ]; then
-        final_commit_message="${final_commit_message}\n\n${body}"
+        final_commit_message="${final_commit_message}\\n\\n${body}"
     fi
     
     echo -e "$final_commit_message"
+}
+
+check_model() {
+  local model="$1"
+  local error
+  local completed
+  local total
+  local percent
+  local spin_char
+  local i=0
+  # Set up spinner characters
+  local spinner=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
+
+  # Check if model exists
+  if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+    echo "Model '$model' not found. Attempting to pull it automatically..." >&2
+    echo "Downloading model '$model'. This may take several minutes..." >&2
+    
+    local pull_payload
+    pull_payload=$(printf '{"name": "%s", "stream": true}' "$model")
+
+    # Use stream mode to show progress; curl command on a single line
+    curl -s -X POST "${OLLAMA_API_BASE}/pull" -H "Content-Type: application/json" -d "$pull_payload" | 
+    while read -r line; do
+      if echo "$line" | grep -q "error"; then
+        error=$(echo "$line" | jq -r '.error')
+        echo -e "\\rFailed to pull model '$model': $error                    " >&2
+        echo "Try using one of these available models instead:" >&2
+        curl -s "${OLLAMA_API_BASE}/tags" | jq -r '.models[].name' | head -5 | sed 's/^/   - /' >&2
+        return 1
+      elif echo "$line" | grep -q "status"; then
+        # Check if this line contains progress information
+        if echo "$line" | jq -e '.completed' >/dev/null 2>&1 && echo "$line" | jq -e '.total' >/dev/null 2>&1; then
+          completed=$(echo "$line" | jq -r '.completed // 0')
+          total=$(echo "$line" | jq -r '.total // 0')
+          percent=0
+          
+          if [[ $total != "0" && $total != "" && $total != "null" ]]; then
+            percent=$(echo "scale=0; 100*$completed/$total" | bc 2>/dev/null || echo "0")
+          fi
+          
+          # Format sizes in human-readable format (MB/GB only)
+          local completed_human total_human completed_unit total_unit
+          if [[ $total -ge 1073741824 ]]; then
+            # Total is GB, show total in GB
+            total_human=$(echo "scale=1; $total/1073741824" | bc 2>/dev/null || echo "0")
+            total_unit="GB"
+            # Show completed in MB if less than 1GB, otherwise in GB
+            if [[ $completed -ge 1073741824 ]]; then
+              completed_human=$(echo "scale=1; $completed/1073741824" | bc 2>/dev/null || echo "0")
+              completed_unit="GB"
+            else
+              completed_human=$(echo "scale=0; $completed/1048576" | bc 2>/dev/null || echo "0")
+              completed_unit="MB"
+            fi
+          else
+            # Total is less than GB, show both in MB
+            completed_human=$(echo "scale=0; $completed/1048576" | bc 2>/dev/null || echo "0")
+            total_human=$(echo "scale=0; $total/1048576" | bc 2>/dev/null || echo "0")
+            completed_unit="MB"
+            total_unit="MB"
+          fi
+          
+          spin_char=${spinner[$i]}
+          i=$(((i + 1) % ${#spinner[@]}))
+          
+          echo -ne "\\r$spin_char Downloading: $percent% ($completed_human$completed_unit/$total_human$total_unit)                    " >&2
+        else
+          # Show spinner even without detailed progress
+          spin_char=${spinner[$i]}
+          i=$(((i + 1) % ${#spinner[@]}))
+          
+          status=$(echo "$line" | jq -r '.status // "downloading"')
+          echo -ne "\\r    $spin_char $status...                                        " >&2
+        fi
+      fi
+    done
+    
+    # Give Ollama a moment to index the new model
+    sleep 2 
+    # Re-check if model was downloaded successfully
+    if curl -s "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+      echo -e "\\rModel '$model' downloaded successfully!                                   " >&2
+      return 0
+    else
+      echo -e "\\rSomething went wrong during download. Model '$model' not available.       " >&2
+      return 1
+    fi
+  fi
+  return 0
 }
 
 # Function to check Ollama service and model
@@ -231,18 +317,11 @@ function check_ollama_service_and_model() {
     fi
     echo "Ollama service is running."
 
-    # Check if model exists
-    if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e ".models[] | select(.name==\"$OLLAMA_MODEL\")" >/dev/null; then
-        echo "Model '$OLLAMA_MODEL' not found locally. Attempting to pull it via Ollama CLI..." >&2
-        if ollama pull "$OLLAMA_MODEL"; then
-            echo "Model '$OLLAMA_MODEL' pulled successfully."
-        else
-            echo "Error: Failed to pull model '$OLLAMA_MODEL'. Please ensure the model name is correct and Ollama can access it." >&2
-            exit 1
-        fi
-    else
-        echo "Model '$OLLAMA_MODEL' is available."
+    # Check if model exists using the new function
+    if ! check_model "$OLLAMA_MODEL"; then
+        exit 1
     fi
+    echo "Model '$OLLAMA_MODEL' is available."
 }
 
 # Function to handle user interaction

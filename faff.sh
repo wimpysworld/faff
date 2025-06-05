@@ -16,22 +16,18 @@ FAFF_TIMEOUT=${FAFF_TIMEOUT:-180}
 # Spinner characters for progress indication
 SPINNER_CHARS=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
 
-# Function to check dependencies
+# Output error message to stderr
+function error_exit() {
+    echo "Error: $1" >&2
+    exit "${2:-1}"
+}
+
+# Check dependencies
 function check_dependencies() {
-    if ! command -v curl &>/dev/null; then
-        echo "Error: curl is not installed. Please install it and try again."
-        exit 1
-    fi
-
-    if ! command -v jq &>/dev/null; then
-        echo "Error: jq is not installed. Please install it and try again."
-        exit 1
-    fi
-
-    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-        echo "Error: This script must be run inside a Git repository."
-        exit 1
-    fi
+    command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
+    command -v curl &>/dev/null || error_exit "curl is not installed. Please install it and try again."
+    command -v jq &>/dev/null || error_exit "jq is not installed. Please install it and try again."
+    git rev-parse --is-inside-work-tree &>/dev/null || error_exit "This script must be run inside a Git repository."
 }
 
 # Function to show spinner during API calls
@@ -350,9 +346,7 @@ check_model() {
 function check_ollama_service_and_model() {
     # Check if Ollama service is running
     if ! curl -s -o /dev/null "${OLLAMA_API_BASE}/version"; then
-        echo "Error: Ollama service is not running at ${OLLAMA_HOST}:${OLLAMA_PORT}." >&2
-        echo "Please start Ollama and try again." >&2
-        exit 1
+        error_exit "Ollama service is not running at ${OLLAMA_HOST}:${OLLAMA_PORT}.\nPlease start Ollama and try again."
     fi
     echo "Ollama service is running."
 

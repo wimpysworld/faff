@@ -358,7 +358,7 @@ function check_ollama_service_and_model() {
 
     # Check if model exists using the new function
     if ! check_model "$FAFF_MODEL"; then
-        exit 1
+        error_exit "Failed to download or verify model '$FAFF_MODEL'"
     fi
     echo "Model '$FAFF_MODEL' is available."
 }
@@ -399,8 +399,7 @@ function main() {
     diff=$(get_git_diff)
 
     if [ -z "$diff" ]; then
-        echo "No changes to commit"
-        exit 1
+        error_exit "No changes to commit"
     fi
 
     local commit_message
@@ -408,8 +407,7 @@ function main() {
     commit_message=$(generate_commit_message "$diff")
 
     if [ -z "$commit_message" ]; then
-        echo "Error: Failed to generate commit message."
-        exit 1
+        error_exit "Failed to generate commit message"
     fi
 
     confirm_commit "$commit_message"

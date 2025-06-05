@@ -38,7 +38,7 @@ function check_dependencies() {
 
 # Get the staged git diff
 function get_git_diff() {
-    git diff --staged --cached --no-color
+    git diff --staged --no-color --function-context
 }
 
 # Function to generate the commit message using Ollama

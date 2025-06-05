@@ -72,11 +72,14 @@ The commit message must be in the format:
     - revert: Reverts a previous commit
     - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
     - test: Adding missing tests or correcting existing tests
-- "subject": A brief summary line (max 72 characters). First letter of <subject> must be lower case. <subject> must be lowercase. Do not use the <type> as the first word. Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
+- "subject": A brief summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
 - "body": A more detailed explanation of the changes, focusing on what problem this commit solves and why this change was necessary. It can be a bulleted list of concise, specific changes. Include optional footers like BREAKING CHANGE here.
 
 Guidelines for writing the commit message:
-- The <subject> should be a lowercase brief summary line (max 72 characters).
+- The <subject> should be a brief summary line (must be 72 characters or less).
+- The first letter of <subject> must be lower case. 
+- The <subject> must be lowercase. 
+- The <subject> must avoid using the <type> as the first word.
 - Follow the <subject> with a blank line, then the [optional body].
 - The [body] should provide a more detailed explanation.
 - The [optional footer(s)] can be used for things like referencing issues or indicating breaking changes.

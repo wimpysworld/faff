@@ -38,7 +38,7 @@ function check_dependencies() {
 
 # Get the staged git diff
 function get_git_diff() {
-    git diff --staged --no-color --function-context
+    git --no-pager diff --staged --no-color --function-context
 }
 
 # Function to generate the commit message using Ollama
@@ -51,27 +51,34 @@ function generate_commit_message() {
     cat > "$SYSTEM_PROMPT_FILE" << 'EOF'
 Based on the git diff, generate a git commit message adhering to the Conventional Commits specification.
 
-The commit message must be structured as a JSON object with the following fields: "type", "subject", "body".
+The commit message must include the following fields: "type", "subject", "body".
+The commit message must be in the format:
+<type>(<optional scope>): <subject>
+
+[body]
+
+[optional footer(s)]
 
 - "type": Choose one of the following:
-  - feat: A new feature
-  - fix: A bug fix
-  - docs: Documentation only changes
-  - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
-  - refactor: A code change that neither fixes a bug nor adds a feature
-  - perf: A code change that improves performance
-  - test: Adding missing tests or correcting existing tests
-  - build: Changes that affect the build system or external dependencies
-  - ci: Changes to CI configuration files, scripts
-  - chore: Other changes that don't modify src or test files
-  - revert: Reverts a previous commit
-- "subject": A brief lowercase summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
-- "body": A more detailed explanation of the changes, focusing on what problem this commit solves and why this change was necessary. It can be a bulleted list. Include optional footers like BREAKING CHANGE here.
+  - fix: a commit of the type fix patches a bug in the codebase (this correlates with PATCH in Semantic Versioning).
+  - feat: a commit of the type feat introduces a new feature to the codebase (this correlates with MINOR in Semantic Versioning).
+  - types other than fix: and feat: are allowed, for example:
+    - build: Changes that affect the build system or external dependencies
+    - chore: Other changes that don't modify src or test files
+    - ci: Changes to CI configuration files, scripts
+    - docs: Documentation only changes
+    - perf: A code change that improves performance
+    - refactor: A code change that neither fixes a bug nor adds a feature
+    - revert: Reverts a previous commit
+    - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+    - test: Adding missing tests or correcting existing tests
+- "subject": A brief summary line (max 72 characters). First letter of <subject> must be lower case. <subject> must be lowercase. Do not use the <type> as the first word. Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
+- "body": A more detailed explanation of the changes, focusing on what problem this commit solves and why this change was necessary. It can be a bulleted list of concise, specific changes. Include optional footers like BREAKING CHANGE here.
 
-Guidelines for content:
-- The <description> (subject) should be a brief summary line.
-- Follow the <description> with a blank line, then the [optional body].
-- The [optional body] should provide a more detailed explanation.
+Guidelines for writing the commit message:
+- The <subject> should be a lowercase brief summary line (max 72 characters).
+- Follow the <subject> with a blank line, then the [optional body].
+- The [body] should provide a more detailed explanation.
 - The [optional footer(s)] can be used for things like referencing issues or indicating breaking changes.
 EOF
 
@@ -96,14 +103,26 @@ EOF
           },
           {
             role: "user",
-            content: ("Here is the diff:\n\n" + $diff_content)
+            content: $diff_content
           }
         ],
         stream: false,
-        format: "json",
-        options: {
-          "temperature": 0.3,
-          "top_p": 0.9
+        format: {
+          type: "object",
+          properties: {
+            type: {
+              type: "string",
+              enum: ["feat", "fix", "build", "chore", "ci", "docs", "perf", "refactor", "revert", "style", "test" ]
+            },
+            subject: {
+              type: "string"
+            },
+            body: {
+              type: "string"
+            }
+          },
+          required: ["type", "subject"],
+          optional: ["body"]
         }
       }' > "$PAYLOAD_FILE"
 

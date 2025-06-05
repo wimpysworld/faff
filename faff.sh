@@ -402,7 +402,6 @@ function confirm_commit() {
 # Main script logic
 function main() {
     check_dependencies
-    check_ollama_service_and_model
 
     local diff
     diff=$(get_git_diff)
@@ -410,6 +409,8 @@ function main() {
     if [ -z "$diff" ]; then
         error_exit "No changes to commit"
     fi
+
+    check_ollama_service_and_model
 
     local commit_message
     echo "Generating commit message with Ollama..."

@@ -46,12 +46,12 @@ show_spinner() {
         i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
         sleep 0.1
     done
-    printf "\r" >&2
+    printf "\r%*s\r" "50" "" >&2  # Clear the spinner line completely
 }
 
 # Get the staged git diff
 function get_git_diff() {
-    git --no-pager diff --staged --no-color --function-context
+    git --no-pager diff --staged --no-color --function-context | tr -d '\r'
 }
 
 # Function to generate the commit message using Ollama
@@ -103,7 +103,7 @@ Guidelines for writing the commit message:
 - The [body] must be in English
 - The [body] should provide a more detailed explanation. Small changes as one sentence, larger changes as a bulleted list.
 - The [body] should explain what and why
-- The [bodu] will be objective
+- The [body] will be objective
 - Bullet points in the [body] start with "-"
 - The [optional footer(s)] can be used for things like referencing issues or indicating breaking changes.
 
@@ -192,8 +192,8 @@ EOF
     show_spinner $api_pid "Generating commit message..."
     wait $api_pid
     
-    # Clear the spinner line
-    printf "\r%*s\r" "50" ""
+    # Clear the spinner line completely
+    printf "\r%*s\r" "50" "" >&2
     
     # Read results
     curl_exit_code=$(cat /tmp/curl_exit_code_$$ 2>/dev/null || echo "1")

@@ -179,7 +179,7 @@ EOF
           properties: {
             type: {
               type: "string",
-              enum: ["feat", "fix", "build", "chore", "ci", "docs", "perf", "refactor", "revert", "style", "test" ]
+              enum: ["feat", "fix", "build", "chore", "ci", "docs", "i18n", "perf", "refactor", "revert", "style", "test" ]
             },
             description: {
               type: "string"

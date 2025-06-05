@@ -51,9 +51,9 @@ function generate_commit_message() {
     cat > "$SYSTEM_PROMPT_FILE" << 'EOF'
 Based on the git diff, generate a git commit message adhering to the Conventional Commits specification.
 
-The commit message must include the following fields: "type", "subject", "body".
+The commit message must include the following fields: "type", "description", "body".
 The commit message must be in the format:
-<type>(<optional scope>): <subject>
+<type>([optional scope]): <description>
 
 [body]
 
@@ -72,17 +72,35 @@ The commit message must be in the format:
     - revert: Reverts a previous commit
     - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
     - test: Adding missing tests or correcting existing tests
-- "subject": A brief summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
+- "description": A very brief summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
 - "body": A more detailed explanation of the changes, focusing on what problem this commit solves and why this change was necessary. It can be a bulleted list of concise, specific changes. Include optional footers like BREAKING CHANGE here.
 
 Guidelines for writing the commit message:
-- The <subject> should be a brief summary line (must be 72 characters or less).
-- The first letter of <subject> must be lower case. 
-- The <subject> must be lowercase. 
-- The <subject> must avoid using the <type> as the first word.
-- Follow the <subject> with a blank line, then the [optional body].
+- The <description> should be a very brief summary line (must be 72 characters or less).
+- The first letter of <description> must be lower case. 
+- The <description> must be lowercase. 
+- The <description> must avoid using the <type> as the first word.
+- Follow the <description> with a blank line, then the [optional body].
 - The [body] should provide a more detailed explanation.
 - The [optional footer(s)] can be used for things like referencing issues or indicating breaking changes.
+
+Specification for Conventional Commits:
+- Commits MUST be prefixed with a type, which consists of a noun, feat, fix, etc., followed by the OPTIONAL scope, OPTIONAL !, and REQUIRED terminal colon and space.
+- The type feat MUST be used when a commit adds a new feature to your application or library.
+- The type fix MUST be used when a commit represents a bug fix for your application.
+- A scope MAY be provided after a type. A scope MUST consist of a noun describing a section of the codebase surrounded by parenthesis, e.g., fix(parser):
+- A description MUST immediately follow the colon and space after the type/scope prefix. The description is a short summary of the code changes, e.g., fix: array parsing issue when multiple spaces were contained in string.
+- A longer commit body MAY be provided after the short description, providing additional contextual information about the code changes. The body MUST begin one blank line after the description.
+- A commit body is free-form and MAY consist of any number of newline separated paragraphs.
+- One or more footers MAY be provided one blank line after the body. Each footer MUST consist of a word token, followed by either a :<space> or <space># separator, followed by a string value (this is inspired by the git trailer convention).
+- A footer's token MUST use - in place of whitespace characters, e.g., Acked-by (this helps differentiate the footer section from a multi-paragraph body). An exception is made for BREAKING CHANGE, which MAY also be used as a token.
+- A footer's value MAY contain spaces and newlines, and parsing MUST terminate when the next valid footer token/separator pair is observed.
+- Breaking changes MUST be indicated in the type/scope prefix of a commit, or as an entry in the footer.
+- If included as a footer, a breaking change MUST consist of the uppercase text BREAKING CHANGE, followed by a colon, space, and description, e.g., BREAKING CHANGE: environment variables now take precedence over config files.
+- If included in the type/scope prefix, breaking changes MUST be indicated by a ! immediately before the :. If ! is used, BREAKING CHANGE: MAY be omitted from the footer section, and the commit description SHALL be used to describe the breaking change.
+- Types other than feat and fix MAY be used in your commit messages, e.g., docs: update ref docs.
+- The units of information that make up Conventional Commits MUST NOT be treated as case sensitive by implementors, with the exception of BREAKING CHANGE which MUST be uppercase.
+- BREAKING-CHANGE MUST be synonymous with BREAKING CHANGE, when used as a token in a footer.
 EOF
 
     # Properly escape the git diff for JSON using jq
@@ -117,15 +135,18 @@ EOF
               type: "string",
               enum: ["feat", "fix", "build", "chore", "ci", "docs", "perf", "refactor", "revert", "style", "test" ]
             },
-            subject: {
+            description: {
               type: "string"
             },
             body: {
               type: "string"
             }
           },
-          required: ["type", "subject"],
+          required: ["type", "description"],
           optional: ["body"]
+        },
+        options: {
+          "temperature": 0.3
         }
       }' > "$PAYLOAD_FILE"
 
@@ -170,11 +191,11 @@ EOF
     fi
     
     # Attempt to parse the message content as JSON
-    local type subject body
+    local type description body
     if ! type=$(echo "$message_content" | jq -r '.type // empty') || \
-       ! subject=$(echo "$message_content" | jq -r '.subject // empty') || \
+       ! description=$(echo "$message_content" | jq -r '.description // empty') || \
        ! body=$(echo "$message_content" | jq -r '.body // empty'); then
-        echo "Error: Could not parse type, subject, or body from Ollama's message content." >&2
+        echo "Error: Could not parse type, description, or body from Ollama's message content." >&2
         echo "Message content: $message_content" >&2
         # Fallback: use the whole message content as the commit message if it's not JSON
         # This might happen if the model doesn't strictly follow the JSON format instruction
@@ -183,16 +204,16 @@ EOF
     fi
 
 
-    if [ -z "$type" ] || [ -z "$subject" ]; then
-        echo "Error: Ollama response missing 'type' or 'subject'." >&2
-        echo "Parsed content: Type='$type', Subject='$subject'" >&2
+    if [ -z "$type" ] || [ -z "$description" ]; then
+        echo "Error: Ollama response missing 'type' or 'description'." >&2
+        echo "Parsed content: Type='$type', Description='$description'" >&2
         echo "Message content from API: $message_content" >&2
         # Fallback to using the raw message content if essential parts are missing
         echo "$message_content"
         return 0
     fi
 
-    local final_commit_message="${type}: ${subject}"
+    local final_commit_message="${type}: ${description}"
     if [ -n "$body" ] && [ "$body" != "null" ]; then
         final_commit_message="${final_commit_message}\n\n${body}"
     fi

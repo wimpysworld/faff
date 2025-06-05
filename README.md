@@ -6,11 +6,11 @@ Automatically generate **conventional commit messages** from your git diffs usin
 
 ## ✨ Why faff?
 
-There are plenty AI commit tools, they mostly rely on cloud APIs. `faff` was born from a desire to explore the [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) while creating a privacy-first alternative that keeps your code local. It's a learning project that became genuinely useful!
+There are plenty of AI git commit message generators, they mostly rely on cloud APIs. `faff` was born from a desire to explore the [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) while creating a privacy-first alternative that keeps your code local. It's a learning project that became genuinely useful!
 
 - **🤖 AI-Powered**: Leverages local Ollama LLMs for intelligent commit message generation
 - **📝 Standards-Compliant**: Automatically follows Conventional Commits specification
-- **🔒 Privacy-First**: Runs entirely locally - your code never leaves your machine
+- **️🕵️ Privacy-First**: Runs entirely locally - your code never leaves your machine
 - **🐤 Simple Setup**: Auto-downloads models and handles all dependencies
 - **🎨 Beautiful UX**: Elegant progress indicators and interactive prompts
 
@@ -46,11 +46,31 @@ That's it! `faff` will analyze your changes and generate a commit message.
 
 <!-- [Screenshot: Show the faff interface with spinner animation and generated commit message preview] -->
 
-# ⚙️ Configuration
+# 🧠 AI Models
 
-## Environment Variables
+I've mostly tested `faff` using the [**qwen2.5-coder**](https://ollama.com/library/qwen2.5-coder) family of models as they've worked best in my test. Choose one based on your available VRAM/Unified memory:
 
-Customize faff's behavior through environment variables:
+| Model                  | VRAM  | Speed | Quality    |
+|------------------------|-------|-------|------------|
+| `qwen2.5-coder:1.5b`   | ~1GB  | ⚡⚡⚡⚡  | ⭐⭐       |
+| `qwen2.5-coder:3b`     | ~2GB  | ⚡⚡⚡   | ⭐⭐⭐     |
+| **`qwen2.5-coder:7b`** | ~5GB  | ⚡⚡⚡   | ⭐⭐⭐⭐   |
+| `qwen2.5-coder:14b`    | ~9GB  | ⚡⚡    | ⭐⭐⭐⭐⭐ |
+| `qwen2.5-coder:32b`    | ~20GB | ⚡     | ⭐⭐⭐⭐⭐ |
+
+Any model supported by Ollama will work so feel free to experiment 🧪 Share your feedback and observations in the [`faff` discussions](https://github.com/wimpysworld/faff/discussions) ️🗨️ so we can all benefit.
+
+## Using a Custom Model
+
+To use a specific model, just override the `FAFF_MODEL` environment variable.
+
+```bash
+FAFF_MODEL="qwen2.5-coder:3b" faff
+```
+
+### Environment Variables
+
+Customize `faff`'s behavior through environment variables:
 
 ```bash
 # Model selection (default: qwen2.5-coder:7b)
@@ -64,7 +84,7 @@ export OLLAMA_PORT="11434"
 export FAFF_TIMEOUT=300
 ```
 
-## Shell Configuration
+### Shell Configuration
 
 Add to your shell profile for persistent settings:
 
@@ -76,36 +96,17 @@ export OLLAMA_PORT="11434"
 export FAFF_TIMEOUT=180
 ```
 
-## Git Integration
+# 🐙 Git Integration
 
 Add helpful aliases to your `~/.gitconfig`:
 
 ```bash
 [alias]
-    faff = "!faff.sh"                # Generate commit with faff
-    yolo = "!git add . && faff.sh"   # Stage all and commit with faff
+    faff = "!faff"               # Generate commit with faff
+    yolo = "!git add . && faff"  # Stage all and commit with faff
 ```
 
-## Recommended Models
-
-faff works best with the **qwen2.5-coder** family. Choose based on your available VRAM:
-
-| Model                | VRAM  | Speed | Quality    |
-|----------------------|-------|-------|------------|
-| `qwen2.5-coder:1.5b` | ~1GB  | ⚡⚡⚡⚡  | ⭐⭐       |
-| `qwen2.5-coder:3b`   | ~2GB  | ⚡⚡⚡   | ⭐⭐⭐     |
-| `qwen2.5-coder:7b`   | ~5GB  | ⚡⚡⚡   | ⭐⭐⭐⭐   |
-| `qwen2.5-coder:14b`  | ~9GB  | ⚡⚡    | ⭐⭐⭐⭐⭐ |
-| `qwen2.5-coder:32b`  | ~20GB | ⚡     | ⭐⭐⭐⭐⭐ |
-
-### Using a Custom Model
-
-```bash
-# Use a specific model based on your GPU memory
-FAFF_MODEL="qwen2.5-coder:3b" faff
-```
-
-# 🐛 Troubleshooting
+# 🛟 Troubleshooting
 
 ## Common Issues
 

@@ -22,6 +22,11 @@ function error_exit() {
     exit "${2:-1}"
 }
 
+# Clean up temporary files
+function cleanup_temp_files() {
+    rm -f "$@"
+}
+
 # Check dependencies
 function check_dependencies() {
     command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
@@ -170,7 +175,7 @@ EOF
     payload=$(<"$PAYLOAD_FILE")
 
     # Clean up temporary files
-    rm -f "$SYSTEM_PROMPT_FILE" "$PAYLOAD_FILE"
+    cleanup_temp_files "$SYSTEM_PROMPT_FILE" "$PAYLOAD_FILE"
 
     local response
     local curl_exit_code=0
@@ -196,7 +201,7 @@ EOF
     response=$(cat /tmp/ollama_response_$$ 2>/dev/null || echo "")
     
     # Clean up temp files
-    rm -f /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
+    cleanup_temp_files /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
 
     if [ $curl_exit_code -ne 0 ]; then
         echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2

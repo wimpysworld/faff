@@ -5,14 +5,14 @@
 # This script automatically generates conventional commit messages
 # from your git diffs using an Ollama LLM.
 
-OLLAMA_MODEL=${OLLAMA_MODEL:-"qwen2.5-coder:7b"}
+FAFF_MODEL=${FAFF_MODEL:-"qwen2.5-coder:7b"}
 OLLAMA_HOST=${OLLAMA_HOST:-"localhost"}
 OLLAMA_PORT=${OLLAMA_PORT:-"11434"}
 OLLAMA_BASE_URL="http://${OLLAMA_HOST}:${OLLAMA_PORT}"
 OLLAMA_API_CHAT="${OLLAMA_BASE_URL}/api/chat"
 OLLAMA_API_BASE="${OLLAMA_BASE_URL}/api"
 # Timeout in seconds for Ollama API calls
-TIMEOUT=180 
+FAFF_TIMEOUT=${FAFF_TIMEOUT:-180} 
 # Spinner characters for progress indication
 SPINNER_CHARS=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
 
@@ -132,7 +132,7 @@ EOF
     PAYLOAD_FILE=$(mktemp)
 
     jq -n \
-      --arg model "$OLLAMA_MODEL" \
+      --arg model "$FAFF_MODEL" \
       --rawfile system "$SYSTEM_PROMPT_FILE" \
       --argjson diff_content "$GIT_DIFF" \
       '{
@@ -181,9 +181,9 @@ EOF
 
     # Start the API call in background and show spinner
     (
-        timeout "$TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
+        timeout "$FAFF_TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
           -H "Content-Type: application/json" \
-          --max-time "$TIMEOUT" \
+          --max-time "$FAFF_TIMEOUT" \
           -d "$payload" > /tmp/ollama_response_$$
         echo "$?" > /tmp/curl_exit_code_$$
     ) &
@@ -205,7 +205,7 @@ EOF
     if [ $curl_exit_code -ne 0 ]; then
         echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2
         if [ $curl_exit_code -eq 124 ]; then
-            echo "Error: Request timed out after $TIMEOUT seconds." >&2
+            echo "Error: Request timed out after $FAFF_TIMEOUT seconds." >&2
         fi
         return 1
     fi
@@ -357,10 +357,10 @@ function check_ollama_service_and_model() {
     echo "Ollama service is running."
 
     # Check if model exists using the new function
-    if ! check_model "$OLLAMA_MODEL"; then
+    if ! check_model "$FAFF_MODEL"; then
         exit 1
     fi
-    echo "Model '$OLLAMA_MODEL' is available."
+    echo "Model '$FAFF_MODEL' is available."
 }
 
 # Function to handle user interaction

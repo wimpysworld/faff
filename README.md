@@ -54,14 +54,14 @@ Customize faff's behavior through environment variables:
 
 ```bash
 # Model selection (default: qwen2.5-coder:7b)
-export OLLAMA_MODEL="qwen2.5-coder:14b"
+export FAFF_MODEL="qwen2.5-coder:14b"
 
 # Ollama connection (defaults to localhost:11434)
 export OLLAMA_HOST="your-ollama-server.com"
 export OLLAMA_PORT="11434"
 
 # API timeout in seconds (default: 180)
-export TIMEOUT=300
+export FAFF_TIMEOUT=300
 ```
 
 ## Shell Configuration
@@ -70,10 +70,10 @@ Add to your shell profile for persistent settings:
 
 ```bash
 # ~/.bashrc, ~/.zshrc, or ~/.config/fish/config.fish
-export OLLAMA_MODEL="qwen2.5-coder:7b"
+export FAFF_MODEL="qwen2.5-coder:7b"
 export OLLAMA_HOST="localhost"
 export OLLAMA_PORT="11434"
-export TIMEOUT=180
+export FAFF_TIMEOUT=180
 ```
 
 ## Git Integration
@@ -102,7 +102,7 @@ faff works best with the **qwen2.5-coder** family. Choose based on your availabl
 
 ```bash
 # Use a specific model based on your GPU memory
-OLLAMA_MODEL="qwen2.5-coder:3b" faff
+FAFF_MODEL="qwen2.5-coder:3b" faff
 ```
 
 # 🐛 Troubleshooting

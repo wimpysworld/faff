@@ -27,6 +27,24 @@ function cleanup_temp_files() {
     rm -f "$@"
 }
 
+# Format download size in human-readable format (MB/GB)
+function format_download_size() {
+    local bytes="$1"
+    local size unit
+    
+    if [[ $bytes -ge 1073741824 ]]; then
+        # >= 1GB, show in GB
+        size=$(echo "scale=1; $bytes/1073741824" | bc 2>/dev/null || echo "0")
+        unit="GB"
+    else
+        # < 1GB, show in MB
+        size=$(echo "scale=0; $bytes/1048576" | bc 2>/dev/null || echo "0")
+        unit="MB"
+    fi
+    
+    echo "${size}${unit}"
+}
+
 # Check dependencies
 function check_dependencies() {
     command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
@@ -296,32 +314,15 @@ function check_model() {
             percent=$(echo "scale=0; 100*$completed/$total" | bc 2>/dev/null || echo "0")
           fi
           
-          # Format sizes in human-readable format (MB/GB only)
-          local completed_human total_human completed_unit total_unit
-          if [[ $total -ge 1073741824 ]]; then
-            # Total is GB, show total in GB
-            total_human=$(echo "scale=1; $total/1073741824" | bc 2>/dev/null || echo "0")
-            total_unit="GB"
-            # Show completed in MB if less than 1GB, otherwise in GB
-            if [[ $completed -ge 1073741824 ]]; then
-              completed_human=$(echo "scale=1; $completed/1073741824" | bc 2>/dev/null || echo "0")
-              completed_unit="GB"
-            else
-              completed_human=$(echo "scale=0; $completed/1048576" | bc 2>/dev/null || echo "0")
-              completed_unit="MB"
-            fi
-          else
-            # Total is less than GB, show both in MB
-            completed_human=$(echo "scale=0; $completed/1048576" | bc 2>/dev/null || echo "0")
-            total_human=$(echo "scale=0; $total/1048576" | bc 2>/dev/null || echo "0")
-            completed_unit="MB"
-            total_unit="MB"
-          fi
+          # Format sizes in human-readable format
+          local completed_formatted total_formatted
+          completed_formatted=$(format_download_size "$completed")
+          total_formatted=$(format_download_size "$total")
           
           spin_char=${SPINNER_CHARS[$i]}
           i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
           
-          echo -ne "\\r$spin_char Downloading: $percent% ($completed_human$completed_unit/$total_human$total_unit)                    " >&2
+          echo -ne "\\r$spin_char Downloading: $percent% ($completed_formatted/$total_formatted)                    " >&2
         else
           # Show spinner even without detailed progress
           spin_char=${SPINNER_CHARS[$i]}

@@ -16,6 +16,12 @@ FAFF_TIMEOUT=${FAFF_TIMEOUT:-180}
 # Spinner characters for progress indication
 SPINNER_CHARS=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
 
+# Calculate next spinner index
+function next_spinner_index() {
+    local current_index=$1
+    echo $(((current_index + 1) % ${#SPINNER_CHARS[@]}))
+}
+
 # Output error message to stderr
 function error_exit() {
     echo "Error: $1" >&2
@@ -62,7 +68,7 @@ function show_spinner() {
     while kill -0 $pid 2>/dev/null; do
         local spin_char=${SPINNER_CHARS[$i]}
         printf "\r%s %s" "$spin_char" "$message" >&2
-        i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
+        i=$(next_spinner_index $i)
         sleep 0.1
     done
     printf "\r%*s\r" "50" "" >&2  # Clear the spinner line completely
@@ -323,13 +329,13 @@ function check_model() {
           total_formatted=$(format_download_size "$total")
           
           spin_char=${SPINNER_CHARS[$i]}
-          i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
+          i=$(next_spinner_index $i)
           
           echo -ne "\\r$spin_char Downloading: $percent% ($completed_formatted/$total_formatted)                    " >&2
         else
           # Show spinner even without detailed progress
           spin_char=${SPINNER_CHARS[$i]}
-          i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
+          i=$(next_spinner_index $i)
           
           status=$(echo "$line" | jq -r '.status // "downloading"')
           echo -ne "\\r$spin_char $status...                                        " >&2

@@ -31,7 +31,7 @@ function check_dependencies() {
 }
 
 # Function to show spinner during API calls
-show_spinner() {
+function show_spinner() {
     local pid=$1
     local message="$2"
     local i=0
@@ -254,7 +254,7 @@ EOF
     echo -e "$final_commit_message"
 }
 
-check_model() {
+function check_model() {
   local model="$1"
   local error
   local completed

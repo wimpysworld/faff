@@ -53,8 +53,19 @@ Based on the git diff, generate a git commit message adhering to the Conventiona
 
 The commit message must be structured as a JSON object with the following fields: "type", "subject", "body".
 
-- "type": Choose one of the following: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert.
-- "subject": A brief summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
+- "type": Choose one of the following:
+  - feat: A new feature
+  - fix: A bug fix
+  - docs: Documentation only changes
+  - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+  - refactor: A code change that neither fixes a bug nor adds a feature
+  - perf: A code change that improves performance
+  - test: Adding missing tests or correcting existing tests
+  - build: Changes that affect the build system or external dependencies
+  - ci: Changes to CI configuration files, scripts
+  - chore: Other changes that don't modify src or test files
+  - revert: Reverts a previous commit
+- "subject": A brief lowercase summary line (max 72 characters). Do not end with a period. Use imperative mood (e.g., 'add feature' not 'added feature').
 - "body": A more detailed explanation of the changes, focusing on what problem this commit solves and why this change was necessary. It can be a bulleted list. Include optional footers like BREAKING CHANGE here.
 
 Guidelines for content:

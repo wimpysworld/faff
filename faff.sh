@@ -13,6 +13,8 @@ OLLAMA_API_CHAT="${OLLAMA_BASE_URL}/api/chat"
 OLLAMA_API_BASE="${OLLAMA_BASE_URL}/api"
 # Timeout in seconds for Ollama API calls
 TIMEOUT=180 
+# Spinner characters for progress indication
+SPINNER_CHARS=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
 
 # Function to check dependencies
 function check_dependencies() {
@@ -30,6 +32,21 @@ function check_dependencies() {
         echo "Error: This script must be run inside a Git repository."
         exit 1
     fi
+}
+
+# Function to show spinner during API calls
+show_spinner() {
+    local pid=$1
+    local message="$2"
+    local i=0
+    
+    while kill -0 $pid 2>/dev/null; do
+        local spin_char=${SPINNER_CHARS[$i]}
+        printf "\r%s %s" "$spin_char" "$message" >&2
+        i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
+        sleep 0.1
+    done
+    printf "\r" >&2
 }
 
 # Get the staged git diff
@@ -162,11 +179,28 @@ EOF
     local response
     local curl_exit_code=0
 
-    response=$(timeout "$TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
-      -H "Content-Type: application/json" \
-      --max-time "$TIMEOUT" \
-      -d "$payload")
-    curl_exit_code=$?
+    # Start the API call in background and show spinner
+    (
+        timeout "$TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
+          -H "Content-Type: application/json" \
+          --max-time "$TIMEOUT" \
+          -d "$payload" > /tmp/ollama_response_$$
+        echo "$?" > /tmp/curl_exit_code_$$
+    ) &
+    
+    local api_pid=$!
+    show_spinner $api_pid "Generating commit message..."
+    wait $api_pid
+    
+    # Clear the spinner line
+    printf "\r%*s\r" "50" ""
+    
+    # Read results
+    curl_exit_code=$(cat /tmp/curl_exit_code_$$ 2>/dev/null || echo "1")
+    response=$(cat /tmp/ollama_response_$$ 2>/dev/null || echo "")
+    
+    # Clean up temp files
+    rm -f /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
 
     if [ $curl_exit_code -ne 0 ]; then
         echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2
@@ -232,8 +266,6 @@ check_model() {
   local percent
   local spin_char
   local i=0
-  # Set up spinner characters
-  local spinner=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
 
   # Check if model exists
   if ! curl -s "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
@@ -285,17 +317,17 @@ check_model() {
             total_unit="MB"
           fi
           
-          spin_char=${spinner[$i]}
-          i=$(((i + 1) % ${#spinner[@]}))
+          spin_char=${SPINNER_CHARS[$i]}
+          i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
           
           echo -ne "\\r$spin_char Downloading: $percent% ($completed_human$completed_unit/$total_human$total_unit)                    " >&2
         else
           # Show spinner even without detailed progress
-          spin_char=${spinner[$i]}
-          i=$(((i + 1) % ${#spinner[@]}))
+          spin_char=${SPINNER_CHARS[$i]}
+          i=$(((i + 1) % ${#SPINNER_CHARS[@]}))
           
           status=$(echo "$line" | jq -r '.status // "downloading"')
-          echo -ne "\\r    $spin_char $status...                                        " >&2
+          echo -ne "\\r$spin_char $status...                                        " >&2
         fi
       fi
     done

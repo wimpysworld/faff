@@ -21,6 +21,7 @@ There are plenty of AI git commit message generators, they mostly rely on cloud 
 - **Ollama** installed and running ([get it here](https://ollama.ai/))
   - Can be a remote instance
 - `bc`, `curl` and `jq`
+- `timeout` from coreutils or [uutils/coreutils](https://github.com/uutils/coreutils)
 - A **git repository** with staged changes
 
 ## Install

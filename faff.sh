@@ -57,6 +57,7 @@ function check_dependencies() {
     command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
     command -v curl &>/dev/null || error_exit "curl is not installed. Please install it and try again."
     command -v jq &>/dev/null || error_exit "jq is not installed. Please install it and try again."
+    command -v timeout &>/dev/null || error_exit "timeout is not installed. Please install coreutils or uutils and try again."
     git rev-parse --is-inside-work-tree &>/dev/null || error_exit "This script must be run inside a Git repository."
 }
 

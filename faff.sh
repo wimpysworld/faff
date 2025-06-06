@@ -118,6 +118,7 @@ function check_dependencies() {
     command -v jq &>/dev/null || error_exit "jq is not installed. Please install it and try again."
     command -v timeout &>/dev/null || error_exit "timeout is not installed. Please install coreutils or uutils and try again."
     git rev-parse --is-inside-work-tree &>/dev/null || error_exit "This script must be run inside a Git repository."
+    ((BASH_VERSINFO[0] < 4)) && error_exit "bash version 4.0 or higher is not installed. Please install a recent version of bash and try again."
 }
 
 # Function to show spinner during API calls

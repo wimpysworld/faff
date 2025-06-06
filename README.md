@@ -29,6 +29,7 @@ So yes, `faff` is another bloody AI commit generator. The Internet's already dro
 - [**Ollama**](https://ollama.ai/) installed and running somewhere
 - [coreutils](https://www.gnu.org/software/coreutils/) or [uutils/coreutils](https://github.com/uutils/coreutils)
 - `bc`, `curl` and `jq`
+- Bash version 4.0 or later.
 - A **git repository** with staged changes
 
 ## Install
@@ -131,16 +132,6 @@ Stage some changes first.
 
 ```bash
 git add .
-```
-
-## macOS Issues
-
-❌ timeout: command not found
-
-Install GNU coreutils
-
-```sh
-brew install coreutils
 ```
 
 # 🤝 Contributing

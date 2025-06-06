@@ -5,7 +5,7 @@
 # This script automatically generates conventional commit messages
 # from your git diffs using an Ollama LLM.
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 FAFF_MODEL=${FAFF_MODEL:-"qwen2.5-coder:7b"}
 OLLAMA_HOST=${OLLAMA_HOST:-"localhost"}
 OLLAMA_PORT=${OLLAMA_PORT:-"11434"}

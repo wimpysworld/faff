@@ -126,6 +126,16 @@ Stage some changes first.
 git add .
 ```
 
+## macOS Issues
+
+❌ timeout: command not found
+
+Install GNU coreutils
+
+```sh
+brew install coreutils
+```
+
 # 🤝 Contributing
 
 We welcome contributions! Whether you're fixing bugs, adding features, or improving documentation, your help makes `faff` better for everyone.

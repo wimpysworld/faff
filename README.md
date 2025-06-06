@@ -1,27 +1,32 @@
 # 🎯 faff
 
-> **Drop the faff from your Git commits!**
+> **Drop the faff, dodge the judgment, get back to coding.**
 
-Automatically generate **conventional commit messages** from your git diffs using the power of local LLMs via Ollama. No more staring at staged changes wondering how to summarize them – let AI craft commit messages that follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/) standards.
+Stop staring at that staged diff like it owes you money. We all know the drill: you've made brilliant changes, `git` knows exactly what happened, but translating that into a proper [Conventional Commits 1.0.0](https://www.conventionalcommits.org/) message feels like explaining your code to your pets 🐾 `faff` uses local LLMs via [Ollama](https://ollama.com/) to automatically generate commit messages from your diffs – because your changes already tell the story, they just need a translator that speaks developer ‍🧑‍💻
 
 ## ✨ Why faff?
 
-There are plenty of AI git commit message generators, they mostly rely on cloud APIs. `faff` was born from a desire to explore the [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) while creating a privacy-first alternative that keeps your code local. It's a learning project that became genuinely useful!
+We've all been there: you spend longer crafting the commit message than writing the actual code. "Was that a `feat:` or `fix:`?" you wonder, as your staged diff sits there perfectly describing everything while you faff about trying to translate it into prose.
 
-- **🤖 AI-Powered**: Leverages local Ollama LLMs for intelligent commit message generation
-- **📝 Standards-Compliant**: Automatically follows Conventional Commits specification
-- **️🕵️ Privacy-First**: Runs entirely locally - your code never leaves your machine
-- **🐤 Simple Setup**: Auto-downloads models and handles all dependencies
-- **🎨 Beautiful UX**: Elegant progress indicators and interactive prompts
+You either end up with "Updated stuff" (*again!*) or some overwrought novel nobody will read. Meanwhile, cloud-based tools want to slurp up your "TODO: delete this abomination" comments and questionable variable names all while extracting money from your wallet 💸
+
+`faff` exists because your diffs already know what happened – they just need a local AI translator that follows conventional commits rules without the existential crisis. **Drop the faff, dodge the judgment, get back to coding.**
+
+So yes, `faff` is another bloody AI commit generator. The Internet's already drowning in them, so here's another one to add to the deluge of "my first AI projects" 💧 `faff` started as me having a poke around the [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) while thinking "surely we can do this locally without sending the content of our wallets to the vibe-coding dealers?" It's basically a learning project that accidentally became useful – like most of the best tools, really.
+
+- **🤖 AI-Powered**: Uses local Ollama LLMs for *"intelligent"* commit message generation
+- **📝 Standards-Compliant**: Follows Conventional Commits specification, most of the time if you're lucky
+- **️🕵️ Privacy-First**: Runs entirely locally - your code never leaves your machine, until you push it to GitHub
+- **🐤 Simple Setup**: Auto-downloads models and handles all dependencies, except it doesn't - that was a marketing lie
+- **🎨 Beautiful UX**: Elegant progress indicators and interactive prompts, for a shell script
 
 # 🚀 Quick Start
 
 ## Prerequisites
 
-- **Ollama** installed and running ([get it here](https://ollama.ai/))
-  - Can be a remote instance
+- [**Ollama**](https://ollama.ai/) installed and running somewhere
+- [coreutils](https://www.gnu.org/software/coreutils/) or [uutils/coreutils](https://github.com/uutils/coreutils)
 - `bc`, `curl` and `jq`
-- `timeout` from coreutils or [uutils/coreutils](https://github.com/uutils/coreutils)
 - A **git repository** with staged changes
 
 ## Install
@@ -45,11 +50,11 @@ faff
 
 That's it! `faff` will analyze your changes and generate a commit message.
 
-<!-- [Screenshot: Show the faff interface with spinner animation and generated commit message preview] -->
+<div align="center"><img alt="faff demo" src="assets/faff.gif" width="1024" /></div>
 
 # 🧠 AI Models
 
-I've mostly tested `faff` using the [**qwen2.5-coder**](https://ollama.com/library/qwen2.5-coder) family of models as they've worked best in my test. Choose one based on your available VRAM/Unified memory:
+I've mostly tested `faff` using the [**qwen2.5-coder**](https://ollama.com/library/qwen2.5-coder) family of models as they've worked best during my testing. Choose one based on your available VRAM or Unified memory:
 
 | Model                  | VRAM  | Speed | Quality    |
 |------------------------|-------|-------|------------|
@@ -90,7 +95,6 @@ export FAFF_TIMEOUT=300
 Add to your shell profile for persistent settings:
 
 ```bash
-# ~/.bashrc, ~/.zshrc, or ~/.config/fish/config.fish
 export FAFF_MODEL="qwen2.5-coder:7b"
 export OLLAMA_HOST="localhost"
 export OLLAMA_PORT="11434"
@@ -104,7 +108,7 @@ Add helpful aliases to your `~/.gitconfig`:
 ```bash
 [alias]
     faff = "!faff"               # Generate commit with faff
-    yolo = "!git add . && faff"  # Stage all and commit with faff
+    vibe = "!git add . && faff"  # Stage all and commit with faff
 ```
 
 # 🛟 Troubleshooting

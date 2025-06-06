@@ -4,6 +4,8 @@
 
 Stop staring at that staged diff like it owes you money. We all know the drill: you've made brilliant changes, `git` knows exactly what happened, but translating that into a proper [Conventional Commits 1.0.0](https://www.conventionalcommits.org/) message feels like explaining your code to your pets 🐾 `faff` uses local LLMs via [Ollama](https://ollama.com/) to automatically generate commit messages from your diffs – because your changes already tell the story, they just need a translator that speaks developer ‍🧑‍💻
 
+`faff` is a productivity tool for the mundane stuff, not a replacement for thoughtful communication.
+
 ## ✨ Why faff?
 
 We've all been there: you spend longer crafting the commit message than writing the actual code. "Was that a `feat:` or `fix:`?" you wonder, as your staged diff sits there perfectly describing everything while you faff about trying to translate it into prose.

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-# Drop the faff from your Git commits!
+# Drop the faff, dodge the judgment, get back to coding.
 #
-# This script automatically generates conventional commit messages
-# from your git diffs using an Ollama LLM.
+# Another bloody AI commit generator, but this one stays local 🦙
 
 # System prompt for commit message generation
 readonly SYSTEM_PROMPT='You will act as a git commit message generator. When receiving a git diff, you will ONLY output the commit message itself, nothing else. No explanations, no questions, no additional comments.

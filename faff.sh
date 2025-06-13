@@ -384,7 +384,7 @@ function confirm_commit() {
     echo "-------------------------"
     echo ""
 
-    read -p "Do you want to use this commit message? (y/n): " choice
+    read -p "Do you want to use or edit this commit message? (y/n/e): " choice
 
     case "${choice,,}" in
         y|yes)
@@ -394,6 +394,10 @@ function confirm_commit() {
         n|no)
             echo "Generated commit message only (not committed):"
             echo "$generated_message"
+            ;;
+        e|edit)
+            git commit -m "$generated_message" --edit
+            echo "Changes committed with the edited message."
             ;;
         *)
             echo "Invalid input. Commit aborted."

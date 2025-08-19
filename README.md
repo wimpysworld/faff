@@ -85,9 +85,10 @@ Customize `faff`'s behavior through environment variables:
 # Model selection (default: qwen2.5-coder:7b)
 export FAFF_MODEL="qwen2.5-coder:14b"
 
-# Ollama connection (defaults to localhost:11434)
+# Ollama connection (defaults to http://localhost:11434)
 export OLLAMA_HOST="your-ollama-server.com"
 export OLLAMA_PORT="11434"
+export OLLAMA_PROTOCOL="http"
 
 # API timeout in seconds (default: 180)
 export FAFF_TIMEOUT=300

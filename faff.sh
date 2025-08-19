@@ -75,6 +75,13 @@ OLLAMA_API_CHAT="${OLLAMA_BASE_URL}/api/chat"
 OLLAMA_API_BASE="${OLLAMA_BASE_URL}/api"
 # Timeout in seconds for Ollama API calls
 FAFF_TIMEOUT=${FAFF_TIMEOUT:-180}
+# Optional auth token for Ollama
+OLLAMA_TOKEN="${OLLAMA_TOKEN:-""}"
+if [ -z "${OLLAMA_TOKEN}" ]; then
+	CURL_TOKEN_HEADER=()
+else
+	CURL_TOKEN_HEADER=('-H' "Authorization: Bearer ${OLLAMA_TOKEN}")
+fi
 
 # Calculate next spinner index
 function next_spinner_index() {
@@ -209,6 +216,7 @@ function generate_commit_message() {
     # Start the API call in background and show spinner
     (
         timeout "$FAFF_TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
+          "${CURL_TOKEN_HEADER[@]}" \
           -H "Content-Type: application/json" \
           --max-time "$FAFF_TIMEOUT" \
           -d "$payload" > /tmp/ollama_response_$$
@@ -295,7 +303,11 @@ function check_model() {
   local i=0
 
   # Define the model existence check query
-  local model_check_query="curl -s \"${OLLAMA_API_BASE}/tags\" | jq -e --arg M \"$model\" '.models[] | select(.name == \$M)'"
+  if [ -z "${OLLAMA_TOKEN}" ]; then
+    local model_check_query="curl -s \"${OLLAMA_API_BASE}/tags\" | jq -e --arg M \"$model\" '.models[] | select(.name == \$M)'"
+  else
+     local model_check_query="curl -s -H \"Authorization: Bearer ${OLLAMA_TOKEN}\" \"${OLLAMA_API_BASE}/tags\" | jq -e --arg M \"$model\" '.models[] | select(.name == \$M)'"
+  fi
 
   # Check if model exists
   if ! eval "$model_check_query" >/dev/null; then
@@ -306,13 +318,13 @@ function check_model() {
     pull_payload=$(printf '{"name": "%s", "stream": true}' "$model")
 
     # Use stream mode to show progress; curl command on a single line
-    curl -s -X POST "${OLLAMA_API_BASE}/pull" -H "Content-Type: application/json" -d "$pull_payload" | 
+    curl -s "${CURL_TOKEN_HEADER[@]}" -X POST "${OLLAMA_API_BASE}/pull" -H "Content-Type: application/json" -d "$pull_payload" | 
     while read -r line; do
       if echo "$line" | grep -q "error"; then
         error=$(echo "$line" | jq -r '.error')
         echo -e "\\rFailed to pull model '$model': $error                    " >&2
         echo "Try using one of these available models instead:" >&2
-        curl -s "${OLLAMA_API_BASE}/tags" | jq -r '.models[].name' | head -5 | sed 's/^/   - /' >&2
+        curl -s "${CURL_TOKEN_HEADER[@]}" "${OLLAMA_API_BASE}/tags" | jq -r '.models[].name' | head -5 | sed 's/^/   - /' >&2
         return 1
       elif echo "$line" | grep -q "status"; then
         # Check if this line contains progress information
@@ -362,7 +374,7 @@ function check_model() {
 # Function to check Ollama service and model
 function check_ollama_service_and_model() {
     # Check if Ollama service is running
-    if ! curl -s -o /dev/null "${OLLAMA_API_BASE}/version"; then
+    if ! curl -s "${CURL_TOKEN_HEADER[@]}" -o /dev/null "${OLLAMA_API_BASE}/version"; then
         error_exit "Ollama service is not running at ${OLLAMA_HOST}:${OLLAMA_PORT}.\nPlease start Ollama and try again."
     fi
     echo "Ollama service is running."

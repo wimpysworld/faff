@@ -97,17 +97,6 @@ export OLLAMA_TOKEN="sk-ollama-kasdjfhlwekjfhlashjehasjfgsdejsj"
 export FAFF_TIMEOUT=300
 ```
 
-### Shell Configuration
-
-Add to your shell profile for persistent settings:
-
-```bash
-export FAFF_MODEL="qwen2.5-coder:7b"
-export OLLAMA_HOST="localhost"
-export OLLAMA_PORT="11434"
-export FAFF_TIMEOUT=180
-```
-
 # 🐙 Git Integration
 
 Add helpful aliases to your `~/.gitconfig`:

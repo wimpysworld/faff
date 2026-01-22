@@ -101,6 +101,18 @@ function cleanup_temp_files() {
 	rm -f "$@"
 }
 
+# Get allowed scopes from commitlint configuration files
+function get_allowed_scopes() {
+	local config_files=(".commitlintrc.json" "commitlint.config.json")
+	for file in "${config_files[@]}"; do
+		if [[ -f "$file" ]]; then
+			jq -r '.rules."scope-enum"[2] // [] | join(", ")' "$file" 2>/dev/null
+			return
+		fi
+	done
+	echo ""
+}
+
 # Format download size in human-readable format (MB/GB)
 function format_download_size() {
 	local bytes="$1"
@@ -153,6 +165,10 @@ function get_git_diff() {
 function generate_commit_message() {
 	local diff="$1"
 
+	# Check for allowed scopes from commitlint configuration
+	local allowed_scopes
+	allowed_scopes=$(get_allowed_scopes)
+
 	# Create temporary files for all data to avoid ARG_MAX limits
 	local SYSTEM_PROMPT_FILE DIFF_FILE PAYLOAD_FILE RESPONSE_FILE EXIT_CODE_FILE
 	SYSTEM_PROMPT_FILE=$(mktemp)
@@ -161,51 +177,107 @@ function generate_commit_message() {
 	RESPONSE_FILE=$(mktemp)
 	EXIT_CODE_FILE=$(mktemp)
 
-	printf '%s' "$SYSTEM_PROMPT" >"$SYSTEM_PROMPT_FILE"
+	# Build system prompt, adding scope constraint if allowed scopes are found
+	if [[ -n "$allowed_scopes" ]]; then
+		printf '%s\n\nIMPORTANT: The [optional scope] MUST be one of these allowed values: %s. Do not use any other scope.' "$SYSTEM_PROMPT" "$allowed_scopes" >"$SYSTEM_PROMPT_FILE"
+	else
+		printf '%s' "$SYSTEM_PROMPT" >"$SYSTEM_PROMPT_FILE"
+	fi
 
 	# Write diff to temp file and escape for JSON using file input to avoid ARG_MAX
 	printf '%s' "$diff" >"$DIFF_FILE"
 	local GIT_DIFF
 	GIT_DIFF=$(jq -Rs . <"$DIFF_FILE")
 
-	jq -n \
-		--arg model "$FAFF_MODEL" \
-		--rawfile system "$SYSTEM_PROMPT_FILE" \
-		--argjson diff_content "$GIT_DIFF" \
-		'{
-        model: $model,
-        messages: [
-          {
-            role: "system",
-            content: $system
-          },
-          {
-            role: "user",
-            content: ("Here is the diff:\n\n" + $diff_content)
-          }
-        ],
-        stream: false,
-        format: {
-          type: "object",
-          properties: {
-            type: {
-              type: "string",
-              enum: ["feat", "fix", "build", "chore", "ci", "docs", "i18n", "perf", "refactor", "revert", "style", "test" ]
+	# Build the JSON payload with optional scope constraint
+	if [[ -n "$allowed_scopes" ]]; then
+		# Convert comma-separated scopes to JSON array
+		local scope_array
+		scope_array=$(echo "$allowed_scopes" | jq -R 'split(", ")')
+
+		jq -n \
+			--arg model "$FAFF_MODEL" \
+			--rawfile system "$SYSTEM_PROMPT_FILE" \
+			--argjson diff_content "$GIT_DIFF" \
+			--argjson scopes "$scope_array" \
+			'{
+            model: $model,
+            messages: [
+              {
+                role: "system",
+                content: $system
+              },
+              {
+                role: "user",
+                content: ("Here is the diff:\n\n" + $diff_content)
+              }
+            ],
+            stream: false,
+            format: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["feat", "fix", "build", "chore", "ci", "docs", "i18n", "perf", "refactor", "revert", "style", "test" ]
+                },
+                scope: {
+                  type: "string",
+                  enum: $scopes
+                },
+                description: {
+                  type: "string"
+                },
+                body: {
+                  type: "string"
+                }
+              },
+              required: ["type", "description"],
+              optional: ["scope", "body"]
             },
-            description: {
-              type: "string"
-            },
-            body: {
-              type: "string"
+            options: {
+              "temperature": 0.3
             }
-          },
-          required: ["type", "description"],
-          optional: ["body"]
-        },
-        options: {
-          "temperature": 0.3
-        }
-      }' >"$PAYLOAD_FILE"
+          }' >"$PAYLOAD_FILE"
+	else
+		jq -n \
+			--arg model "$FAFF_MODEL" \
+			--rawfile system "$SYSTEM_PROMPT_FILE" \
+			--argjson diff_content "$GIT_DIFF" \
+			'{
+            model: $model,
+            messages: [
+              {
+                role: "system",
+                content: $system
+              },
+              {
+                role: "user",
+                content: ("Here is the diff:\n\n" + $diff_content)
+              }
+            ],
+            stream: false,
+            format: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["feat", "fix", "build", "chore", "ci", "docs", "i18n", "perf", "refactor", "revert", "style", "test" ]
+                },
+                description: {
+                  type: "string"
+                },
+                body: {
+                  type: "string"
+                }
+              },
+              required: ["type", "description"],
+              optional: ["body"]
+            },
+            options: {
+              "temperature": 0.3
+            }
+          }' >"$PAYLOAD_FILE"
+	fi
 
 	local response
 	local curl_exit_code=0
@@ -261,8 +333,9 @@ function generate_commit_message() {
 	fi
 
 	# Attempt to parse the message content as JSON
-	local type description body
+	local type scope description body
 	if ! type=$(echo "$message_content" | jq -r '.type // empty') ||
+		! scope=$(echo "$message_content" | jq -r '.scope // empty') ||
 		! description=$(echo "$message_content" | jq -r '.description // empty') ||
 		! body=$(echo "$message_content" | jq -r '.body // empty'); then
 		echo "Error: Could not parse type, description, or body from Ollama's message content." >&2
@@ -282,7 +355,13 @@ function generate_commit_message() {
 		return 0
 	fi
 
-	local final_commit_message="${type}: ${description}"
+	# Build commit message with optional scope
+	local final_commit_message
+	if [ -n "$scope" ] && [ "$scope" != "null" ]; then
+		final_commit_message="${type}(${scope}): ${description}"
+	else
+		final_commit_message="${type}: ${description}"
+	fi
 	if [ -n "$body" ] && [ "$body" != "null" ]; then
 		final_commit_message="${final_commit_message}\\n\\n${body}"
 	fi

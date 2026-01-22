@@ -26,9 +26,11 @@ bash -n faff.sh
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `FAFF_MODEL` | `qwen2.5-coder:7b` | Ollama model to use |
+| `FAFF_TIMEOUT` | `180` | API timeout in seconds |
 | `OLLAMA_HOST` | `localhost` | Ollama server hostname |
 | `OLLAMA_PORT` | `11434` | Ollama server port |
-| `FAFF_TIMEOUT` | `180` | API timeout in seconds |
+| `OLLAMA_PROTOCOL` | `http` | Protocol for Ollama connection (http/https) |
+| `OLLAMA_TOKEN` | (empty) | Optional API token for authenticated Ollama servers |
 
 ## Code style
 
@@ -61,11 +63,16 @@ Single script (`faff.sh`) with these key functions:
 - `main()` - Entry point, orchestrates workflow
 - `check_dependencies()` - Validates bash version and required tools
 - `get_git_diff()` - Retrieves staged changes
+- `get_allowed_scopes()` - Detects commitlint config and extracts allowed scopes
 - `generate_commit_message()` - Calls Ollama API with structured JSON output
 - `check_model()` - Auto-downloads missing models
 - `confirm_commit()` - Interactive prompt (y/n/e for yes/no/edit)
 
 The script embeds a detailed system prompt for Conventional Commits compliance, using Ollama's structured output format to ensure consistent JSON responses.
+
+## Integrations
+
+**Commitlint:** Auto-detects `.commitlintrc.json` or `commitlint.config.json` and extracts `scope-enum` to constrain LLM scope selection. Passive feature - no impact if no config exists.
 
 ## Constraints
 

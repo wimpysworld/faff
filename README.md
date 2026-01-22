@@ -107,6 +107,29 @@ Add helpful aliases to your `~/.gitconfig`:
     vibe = "!git add . && faff"  # Stage all and commit with faff
 ```
 
+# 🔧 Commitlint Integration
+
+Got a [commitlint](https://commitlint.js.org/) config in your project? Lovely. `faff` will automatically detect it and constrain the AI to only use your allowed scopes - no configuration required, no extra dependencies, just works.
+
+If `faff` finds a `.commitlintrc.json` or `commitlint.config.json` in your repository, it extracts the scopes from `rules.scope-enum` and tells the LLM to stick to them. Your commits get the proper `type(scope): description` format without the AI going off-piste with invented scopes.
+
+No commitlint config? No worries - `faff` carries on exactly as before.
+
+## Example Config
+
+Here's a commitlint config that `faff` will pick up:
+
+```json
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "scope-enum": [2, "always", ["api", "cli", "docs", "tests"]]
+  }
+}
+```
+
+With this config, `faff` will only generate commits using `api`, `cli`, `docs`, or `tests` as scopes. Keeps everything tidy without you having to remember what scopes exist.
+
 # 🛟 Troubleshooting
 
 ## Common Issues

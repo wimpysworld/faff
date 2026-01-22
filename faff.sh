@@ -153,18 +153,20 @@ function get_git_diff() {
 function generate_commit_message() {
 	local diff="$1"
 
-	# Create a temporary file for the system prompt
-	local SYSTEM_PROMPT_FILE
+	# Create temporary files for all data to avoid ARG_MAX limits
+	local SYSTEM_PROMPT_FILE DIFF_FILE PAYLOAD_FILE RESPONSE_FILE EXIT_CODE_FILE
 	SYSTEM_PROMPT_FILE=$(mktemp)
-	echo "$SYSTEM_PROMPT" >"$SYSTEM_PROMPT_FILE"
-
-	# Properly escape the git diff for JSON using jq
-	local GIT_DIFF
-	GIT_DIFF=$(echo "$diff" | jq -Rs .)
-
-	# Create a temporary file for storing the payload
-	local PAYLOAD_FILE
+	DIFF_FILE=$(mktemp)
 	PAYLOAD_FILE=$(mktemp)
+	RESPONSE_FILE=$(mktemp)
+	EXIT_CODE_FILE=$(mktemp)
+
+	printf '%s' "$SYSTEM_PROMPT" >"$SYSTEM_PROMPT_FILE"
+
+	# Write diff to temp file and escape for JSON using file input to avoid ARG_MAX
+	printf '%s' "$diff" >"$DIFF_FILE"
+	local GIT_DIFF
+	GIT_DIFF=$(jq -Rs . <"$DIFF_FILE")
 
 	jq -n \
 		--arg model "$FAFF_MODEL" \
@@ -205,23 +207,18 @@ function generate_commit_message() {
         }
       }' >"$PAYLOAD_FILE"
 
-	local payload
-	payload=$(<"$PAYLOAD_FILE")
-
-	# Clean up temporary files
-	cleanup_temp_files "$SYSTEM_PROMPT_FILE" "$PAYLOAD_FILE"
-
 	local response
 	local curl_exit_code=0
 
 	# Start the API call in background and show spinner
+	# Use --data-binary @file to avoid ARG_MAX limits with large payloads
 	(
 		timeout "$FAFF_TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
 			"${CURL_TOKEN_HEADER[@]}" \
 			-H "Content-Type: application/json" \
 			--max-time "$FAFF_TIMEOUT" \
-			-d "$payload" >/tmp/ollama_response_$$
-		echo "$?" >/tmp/curl_exit_code_$$
+			--data-binary "@${PAYLOAD_FILE}" >"$RESPONSE_FILE"
+		echo "$?" >"$EXIT_CODE_FILE"
 	) &
 
 	local api_pid=$!
@@ -232,11 +229,11 @@ function generate_commit_message() {
 	printf "\r%*s\r" "50" "" >&2
 
 	# Read results
-	curl_exit_code=$(cat /tmp/curl_exit_code_$$ 2>/dev/null || echo "1")
-	response=$(cat /tmp/ollama_response_$$ 2>/dev/null || echo "")
+	curl_exit_code=$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo "1")
+	response=$(cat "$RESPONSE_FILE" 2>/dev/null || echo "")
 
-	# Clean up temp files
-	cleanup_temp_files /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
+	# Clean up all temp files
+	cleanup_temp_files "$SYSTEM_PROMPT_FILE" "$DIFF_FILE" "$PAYLOAD_FILE" "$RESPONSE_FILE" "$EXIT_CODE_FILE"
 
 	if [ $curl_exit_code -ne 0 ]; then
 		echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2

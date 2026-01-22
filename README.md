@@ -90,7 +90,7 @@ export OLLAMA_HOST="your-ollama-server.com"
 export OLLAMA_PORT="11434"
 
 # Optional API key for Ollama, if the API is protected
-OLLAMA_TOKEN="sk-ollama-kasdjfhlwekjfhlashjehasjfgsdejsj"
+export OLLAMA_TOKEN="sk-ollama-kasdjfhlwekjfhlashjehasjfgsdejsj"
 
 # API timeout in seconds (default: 180)
 export FAFF_TIMEOUT=300

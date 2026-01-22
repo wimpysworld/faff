@@ -65,7 +65,7 @@ Specification for Conventional Commits:
 - The units of information that make up Conventional Commits MUST NOT be treated as case sensitive by implementors, with the exception of BREAKING CHANGE which MUST be uppercase.
 - BREAKING-CHANGE MUST be synonymous with BREAKING CHANGE, when used as a token in a footer.'
 # Spinner characters for progress indication
-readonly SPINNER_CHARS=( "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏" )
+readonly SPINNER_CHARS=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 readonly VERSION="0.1.1"
 FAFF_MODEL=${FAFF_MODEL:-"qwen2.5-coder:7b"}
 OLLAMA_HOST=${OLLAMA_HOST:-"localhost"}
@@ -76,94 +76,101 @@ OLLAMA_API_CHAT="${OLLAMA_BASE_URL}/api/chat"
 OLLAMA_API_BASE="${OLLAMA_BASE_URL}/api"
 # Timeout in seconds for Ollama API calls
 FAFF_TIMEOUT=${FAFF_TIMEOUT:-180}
+# Optional auth token for Ollama
+OLLAMA_TOKEN="${OLLAMA_TOKEN:-""}"
+if [ -z "${OLLAMA_TOKEN}" ]; then
+	CURL_TOKEN_HEADER=()
+else
+	CURL_TOKEN_HEADER=('-H' "Authorization: Bearer ${OLLAMA_TOKEN}")
+fi
 
 # Calculate next spinner index
 function next_spinner_index() {
-    local current_index=$1
-    echo $(((current_index + 1) % ${#SPINNER_CHARS[@]}))
+	local current_index=$1
+	echo $(((current_index + 1) % ${#SPINNER_CHARS[@]}))
 }
 
 # Output error message to stderr
 function error_exit() {
-    echo "Error: $1" >&2
-    exit "${2:-1}"
+	echo "Error: $1" >&2
+	exit "${2:-1}"
 }
 
 # Clean up temporary files
 function cleanup_temp_files() {
-    rm -f "$@"
+	rm -f "$@"
 }
 
 # Format download size in human-readable format (MB/GB)
 function format_download_size() {
-    local bytes="$1"
-    local size unit
-    
-    if [[ $bytes -ge 1073741824 ]]; then
-        # >= 1GB, show in GB
-        size=$(echo "scale=1; $bytes/1073741824" | bc 2>/dev/null || echo "0")
-        unit="GB"
-    else
-        # < 1GB, show in MB
-        size=$(echo "scale=0; $bytes/1048576" | bc 2>/dev/null || echo "0")
-        unit="MB"
-    fi
-    
-    echo "${size}${unit}"
+	local bytes="$1"
+	local size unit
+
+	if [[ $bytes -ge 1073741824 ]]; then
+		# >= 1GB, show in GB
+		size=$(echo "scale=1; $bytes/1073741824" | bc 2>/dev/null || echo "0")
+		unit="GB"
+	else
+		# < 1GB, show in MB
+		size=$(echo "scale=0; $bytes/1048576" | bc 2>/dev/null || echo "0")
+		unit="MB"
+	fi
+
+	echo "${size}${unit}"
 }
 
 # Check dependencies
 function check_dependencies() {
-    command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
-    command -v curl &>/dev/null || error_exit "curl is not installed. Please install it and try again."
-    command -v jq &>/dev/null || error_exit "jq is not installed. Please install it and try again."
-    command -v timeout &>/dev/null || error_exit "timeout is not installed. Please install coreutils or uutils and try again."
-    git rev-parse --is-inside-work-tree &>/dev/null || error_exit "This script must be run inside a Git repository."
-    ((BASH_VERSINFO[0] < 4)) && error_exit "bash version 4.0 or higher is not installed. Please install a recent version of bash and try again."
+	command -v bc &>/dev/null || error_exit "bc is not installed. Please install it and try again."
+	command -v curl &>/dev/null || error_exit "curl is not installed. Please install it and try again."
+	command -v jq &>/dev/null || error_exit "jq is not installed. Please install it and try again."
+	command -v timeout &>/dev/null || error_exit "timeout is not installed. Please install coreutils or uutils and try again."
+	git rev-parse --is-inside-work-tree &>/dev/null || error_exit "This script must be run inside a Git repository."
+	((BASH_VERSINFO[0] < 4)) && error_exit "bash version 4.0 or higher is not installed. Please install a recent version of bash and try again."
 }
 
 # Function to show spinner during API calls
 function show_spinner() {
-    local pid=$1
-    local message="$2"
-    local i=0
-    
-    while kill -0 $pid 2>/dev/null; do
-        local spin_char=${SPINNER_CHARS[$i]}
-        printf "\r%s %s" "$spin_char" "$message" >&2
-        i=$(next_spinner_index $i)
-        sleep 0.1
-    done
-    printf "\r%*s\r" "50" "" >&2  # Clear the spinner line completely
+	local pid=$1
+	local message="$2"
+	local i=0
+
+	while kill -0 $pid 2>/dev/null; do
+		local spin_char=${SPINNER_CHARS[$i]}
+		printf "\r%s %s" "$spin_char" "$message" >&2
+		i=$(next_spinner_index $i)
+		sleep 0.1
+	done
+	printf "\r%*s\r" "50" "" >&2 # Clear the spinner line completely
 }
 
 # Get the staged git diff
 function get_git_diff() {
-    git --no-pager diff --staged --no-color --function-context | tr -d '\r'
+	git --no-pager diff --staged --no-color --function-context | tr -d '\r'
 }
 
 # Function to generate the commit message using Ollama
 function generate_commit_message() {
-    local diff="$1"
-    
-    # Create a temporary file for the system prompt
-    local SYSTEM_PROMPT_FILE
-    SYSTEM_PROMPT_FILE=$(mktemp)
-    echo "$SYSTEM_PROMPT" > "$SYSTEM_PROMPT_FILE"
+	local diff="$1"
 
-    # Properly escape the git diff for JSON using jq
-    local GIT_DIFF
-    GIT_DIFF=$(echo "$diff" | jq -Rs .)
+	# Create a temporary file for the system prompt
+	local SYSTEM_PROMPT_FILE
+	SYSTEM_PROMPT_FILE=$(mktemp)
+	echo "$SYSTEM_PROMPT" >"$SYSTEM_PROMPT_FILE"
 
-    # Create a temporary file for storing the payload
-    local PAYLOAD_FILE
-    PAYLOAD_FILE=$(mktemp)
+	# Properly escape the git diff for JSON using jq
+	local GIT_DIFF
+	GIT_DIFF=$(echo "$diff" | jq -Rs .)
 
-    jq -n \
-      --arg model "$FAFF_MODEL" \
-      --rawfile system "$SYSTEM_PROMPT_FILE" \
-      --argjson diff_content "$GIT_DIFF" \
-      '{
+	# Create a temporary file for storing the payload
+	local PAYLOAD_FILE
+	PAYLOAD_FILE=$(mktemp)
+
+	jq -n \
+		--arg model "$FAFF_MODEL" \
+		--rawfile system "$SYSTEM_PROMPT_FILE" \
+		--argjson diff_content "$GIT_DIFF" \
+		'{
         model: $model,
         messages: [
           {
@@ -196,238 +203,235 @@ function generate_commit_message() {
         options: {
           "temperature": 0.3
         }
-      }' > "$PAYLOAD_FILE"
+      }' >"$PAYLOAD_FILE"
 
-    local payload
-    payload=$(<"$PAYLOAD_FILE")
+	local payload
+	payload=$(<"$PAYLOAD_FILE")
 
-    # Clean up temporary files
-    cleanup_temp_files "$SYSTEM_PROMPT_FILE" "$PAYLOAD_FILE"
+	# Clean up temporary files
+	cleanup_temp_files "$SYSTEM_PROMPT_FILE" "$PAYLOAD_FILE"
 
-    local response
-    local curl_exit_code=0
+	local response
+	local curl_exit_code=0
 
-    # Start the API call in background and show spinner
-    (
-        timeout "$FAFF_TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
-          -H "Content-Type: application/json" \
-          --max-time "$FAFF_TIMEOUT" \
-          -d "$payload" > /tmp/ollama_response_$$
-        echo "$?" > /tmp/curl_exit_code_$$
-    ) &
-    
-    local api_pid=$!
-    show_spinner $api_pid "Generating commit message..."
-    wait $api_pid
-    
-    # Clear the spinner line completely
-    printf "\r%*s\r" "50" "" >&2
-    
-    # Read results
-    curl_exit_code=$(cat /tmp/curl_exit_code_$$ 2>/dev/null || echo "1")
-    response=$(cat /tmp/ollama_response_$$ 2>/dev/null || echo "")
-    
-    # Clean up temp files
-    cleanup_temp_files /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
+	# Start the API call in background and show spinner
+	(
+		timeout "$FAFF_TIMEOUT" curl -s -X POST "$OLLAMA_API_CHAT" \
+			"${CURL_TOKEN_HEADER[@]}" \
+			-H "Content-Type: application/json" \
+			--max-time "$FAFF_TIMEOUT" \
+			-d "$payload" >/tmp/ollama_response_$$
+		echo "$?" >/tmp/curl_exit_code_$$
+	) &
 
-    if [ $curl_exit_code -ne 0 ]; then
-        echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2
-        if [ $curl_exit_code -eq 124 ]; then
-            echo "Error: Request timed out after $FAFF_TIMEOUT seconds." >&2
-        fi
-        return 1
-    fi
+	local api_pid=$!
+	show_spinner $api_pid "Generating commit message..."
+	wait $api_pid
 
-    # Check for error in response
-    if echo "$response" | jq -e '.error' >/dev/null 2>&1; then
-        local error_msg
-        error_msg=$(echo "$response" | jq -r '.error')
-        echo "Error: Ollama API returned an error: $error_msg" >&2
-        return 1
-    fi
-    
-    local message_content
-    message_content=$(echo "$response" | jq -r '.message.content')
+	# Clear the spinner line completely
+	printf "\r%*s\r" "50" "" >&2
 
-    if [ -z "$message_content" ] || [ "$message_content" == "null" ]; then
-        echo "Error: Failed to extract message content from Ollama response." >&2
-        echo "Full response: $response" >&2
-        return 1
-    fi
-    
-    # Attempt to parse the message content as JSON
-    local type description body
-    if ! type=$(echo "$message_content" | jq -r '.type // empty') || \
-       ! description=$(echo "$message_content" | jq -r '.description // empty') || \
-       ! body=$(echo "$message_content" | jq -r '.body // empty'); then
-        echo "Error: Could not parse type, description, or body from Ollama's message content." >&2
-        echo "Message content: $message_content" >&2
-        # Fallback: use the whole message content as the commit message if it's not JSON
-        # This might happen if the model doesn't strictly follow the JSON format instruction
-        echo "$message_content"
-        return 0
-    fi
+	# Read results
+	curl_exit_code=$(cat /tmp/curl_exit_code_$$ 2>/dev/null || echo "1")
+	response=$(cat /tmp/ollama_response_$$ 2>/dev/null || echo "")
 
+	# Clean up temp files
+	cleanup_temp_files /tmp/curl_exit_code_$$ /tmp/ollama_response_$$
 
-    if [ -z "$type" ] || [ -z "$description" ]; then
-        echo "Error: Ollama response missing 'type' or 'description'." >&2
-        echo "Parsed content: Type='$type', Description='$description'" >&2
-        echo "Message content from API: $message_content" >&2
-        # Fallback to using the raw message content if essential parts are missing
-        echo "$message_content"
-        return 0
-    fi
+	if [ $curl_exit_code -ne 0 ]; then
+		echo "Error: Ollama API call failed with exit code $curl_exit_code." >&2
+		if [ $curl_exit_code -eq 124 ]; then
+			echo "Error: Request timed out after $FAFF_TIMEOUT seconds." >&2
+		fi
+		return 1
+	fi
 
-    local final_commit_message="${type}: ${description}"
-    if [ -n "$body" ] && [ "$body" != "null" ]; then
-        final_commit_message="${final_commit_message}\\n\\n${body}"
-    fi
-    
-    echo -e "$final_commit_message"
+	# Check for error in response
+	if echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+		local error_msg
+		error_msg=$(echo "$response" | jq -r '.error')
+		echo "Error: Ollama API returned an error: $error_msg" >&2
+		return 1
+	fi
+
+	local message_content
+	message_content=$(echo "$response" | jq -r '.message.content')
+
+	if [ -z "$message_content" ] || [ "$message_content" == "null" ]; then
+		echo "Error: Failed to extract message content from Ollama response." >&2
+		echo "Full response: $response" >&2
+		return 1
+	fi
+
+	# Attempt to parse the message content as JSON
+	local type description body
+	if ! type=$(echo "$message_content" | jq -r '.type // empty') ||
+		! description=$(echo "$message_content" | jq -r '.description // empty') ||
+		! body=$(echo "$message_content" | jq -r '.body // empty'); then
+		echo "Error: Could not parse type, description, or body from Ollama's message content." >&2
+		echo "Message content: $message_content" >&2
+		# Fallback: use the whole message content as the commit message if it's not JSON
+		# This might happen if the model doesn't strictly follow the JSON format instruction
+		echo "$message_content"
+		return 0
+	fi
+
+	if [ -z "$type" ] || [ -z "$description" ]; then
+		echo "Error: Ollama response missing 'type' or 'description'." >&2
+		echo "Parsed content: Type='$type', Description='$description'" >&2
+		echo "Message content from API: $message_content" >&2
+		# Fallback to using the raw message content if essential parts are missing
+		echo "$message_content"
+		return 0
+	fi
+
+	local final_commit_message="${type}: ${description}"
+	if [ -n "$body" ] && [ "$body" != "null" ]; then
+		final_commit_message="${final_commit_message}\\n\\n${body}"
+	fi
+
+	echo -e "$final_commit_message"
 }
 
 function check_model() {
-  local model="$1"
-  local error
-  local completed
-  local total
-  local percent
-  local spin_char
-  local i=0
+	local model="$1"
+	local error
+	local completed
+	local total
+	local percent
+	local spin_char
+	local i=0
 
-  # Define the model existence check query
-  local model_check_query="curl -s \"${OLLAMA_API_BASE}/tags\" | jq -e --arg M \"$model\" '.models[] | select(.name == \$M)'"
+	# Check if model exists by running curl/jq directly (avoids command injection via eval)
+	if ! curl -s "${CURL_TOKEN_HEADER[@]}" "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+		echo "Model '$model' not found. Attempting to pull it automatically..." >&2
+		echo "Downloading model '$model'. This may take several minutes..." >&2
 
-  # Check if model exists
-  if ! eval "$model_check_query" >/dev/null; then
-    echo "Model '$model' not found. Attempting to pull it automatically..." >&2
-    echo "Downloading model '$model'. This may take several minutes..." >&2
-    
-    local pull_payload
-    pull_payload=$(printf '{"name": "%s", "stream": true}' "$model")
+		local pull_payload
+		pull_payload=$(printf '{"name": "%s", "stream": true}' "$model")
 
-    # Use stream mode to show progress; curl command on a single line
-    curl -s -X POST "${OLLAMA_API_BASE}/pull" -H "Content-Type: application/json" -d "$pull_payload" | 
-    while read -r line; do
-      if echo "$line" | grep -q "error"; then
-        error=$(echo "$line" | jq -r '.error')
-        echo -e "\\rFailed to pull model '$model': $error                    " >&2
-        echo "Try using one of these available models instead:" >&2
-        curl -s "${OLLAMA_API_BASE}/tags" | jq -r '.models[].name' | head -5 | sed 's/^/   - /' >&2
-        return 1
-      elif echo "$line" | grep -q "status"; then
-        # Check if this line contains progress information
-        if echo "$line" | jq -e '.completed' >/dev/null 2>&1 && echo "$line" | jq -e '.total' >/dev/null 2>&1; then
-          completed=$(echo "$line" | jq -r '.completed // 0')
-          total=$(echo "$line" | jq -r '.total // 0')
-          percent=0
-          
-          if [[ $total != "0" && $total != "" && $total != "null" ]]; then
-            percent=$(echo "scale=0; 100*$completed/$total" | bc 2>/dev/null || echo "0")
-          fi
-          
-          # Format sizes in human-readable format
-          local completed_formatted total_formatted
-          completed_formatted=$(format_download_size "$completed")
-          total_formatted=$(format_download_size "$total")
-          
-          spin_char=${SPINNER_CHARS[$i]}
-          i=$(next_spinner_index $i)
-          
-          echo -ne "\\r$spin_char Downloading: $percent% ($completed_formatted/$total_formatted)                    " >&2
-        else
-          # Show spinner even without detailed progress
-          spin_char=${SPINNER_CHARS[$i]}
-          i=$(next_spinner_index $i)
-          
-          status=$(echo "$line" | jq -r '.status // "downloading"')
-          echo -ne "\\r$spin_char $status...                                        " >&2
-        fi
-      fi
-    done
-    
-    # Give Ollama a moment to index the new model
-    sleep 2 
-    # Re-check if model was downloaded successfully
-    if eval "$model_check_query" >/dev/null; then
-      echo -e "\\rModel '$model' downloaded successfully!                                   " >&2
-      return 0
-    else
-      echo -e "\\rSomething went wrong during download. Model '$model' not available.       " >&2
-      return 1
-    fi
-  fi
-  return 0
+		# Use stream mode to show progress; curl command on a single line
+		curl -s "${CURL_TOKEN_HEADER[@]}" -X POST "${OLLAMA_API_BASE}/pull" -H "Content-Type: application/json" -d "$pull_payload" |
+			while read -r line; do
+				if echo "$line" | grep -q "error"; then
+					error=$(echo "$line" | jq -r '.error')
+					echo -e "\\rFailed to pull model '$model': $error                    " >&2
+					echo "Try using one of these available models instead:" >&2
+					curl -s "${CURL_TOKEN_HEADER[@]}" "${OLLAMA_API_BASE}/tags" | jq -r '.models[].name' | head -5 | sed 's/^/   - /' >&2
+					return 1
+				elif echo "$line" | grep -q "status"; then
+					# Check if this line contains progress information
+					if echo "$line" | jq -e '.completed' >/dev/null 2>&1 && echo "$line" | jq -e '.total' >/dev/null 2>&1; then
+						completed=$(echo "$line" | jq -r '.completed // 0')
+						total=$(echo "$line" | jq -r '.total // 0')
+						percent=0
+
+						if [[ $total != "0" && $total != "" && $total != "null" ]]; then
+							percent=$(echo "scale=0; 100*$completed/$total" | bc 2>/dev/null || echo "0")
+						fi
+
+						# Format sizes in human-readable format
+						local completed_formatted total_formatted
+						completed_formatted=$(format_download_size "$completed")
+						total_formatted=$(format_download_size "$total")
+
+						spin_char=${SPINNER_CHARS[$i]}
+						i=$(next_spinner_index $i)
+
+						echo -ne "\\r$spin_char Downloading: $percent% ($completed_formatted/$total_formatted)                    " >&2
+					else
+						# Show spinner even without detailed progress
+						spin_char=${SPINNER_CHARS[$i]}
+						i=$(next_spinner_index $i)
+
+						status=$(echo "$line" | jq -r '.status // "downloading"')
+						echo -ne "\\r$spin_char $status...                                        " >&2
+					fi
+				fi
+			done
+
+		# Give Ollama a moment to index the new model
+		sleep 2
+		# Re-check if model was downloaded successfully
+		if curl -s "${CURL_TOKEN_HEADER[@]}" "${OLLAMA_API_BASE}/tags" | jq -e --arg M "$model" '.models[] | select(.name == $M)' >/dev/null; then
+			echo -e "\\rModel '$model' downloaded successfully!                                   " >&2
+			return 0
+		else
+			echo -e "\\rSomething went wrong during download. Model '$model' not available.       " >&2
+			return 1
+		fi
+	fi
+	return 0
 }
 
 # Function to check Ollama service and model
 function check_ollama_service_and_model() {
-    # Check if Ollama service is running
-    if ! curl -s -o /dev/null "${OLLAMA_API_BASE}/version"; then
-        error_exit "Ollama service is not running at ${OLLAMA_HOST}:${OLLAMA_PORT}.\nPlease start Ollama and try again."
-    fi
-    echo "Ollama service is running."
+	# Check if Ollama service is running
+	if ! curl -s "${CURL_TOKEN_HEADER[@]}" -o /dev/null "${OLLAMA_API_BASE}/version"; then
+		error_exit "Ollama service is not running at ${OLLAMA_HOST}:${OLLAMA_PORT}.\nPlease start Ollama and try again."
+	fi
+	echo "Ollama service is running."
 
-    # Check if model exists using the new function
-    if ! check_model "$FAFF_MODEL"; then
-        error_exit "Failed to download or verify model '$FAFF_MODEL'"
-    fi
-    echo "Model '$FAFF_MODEL' is available."
+	# Check if model exists using the new function
+	if ! check_model "$FAFF_MODEL"; then
+		error_exit "Failed to download or verify model '$FAFF_MODEL'"
+	fi
+	echo "Model '$FAFF_MODEL' is available."
 }
 
 # Function to handle user interaction
 function confirm_commit() {
-    local generated_message="$1"
+	local generated_message="$1"
 
-    echo "Generated commit message:"
-    echo "-------------------------"
-    echo "$generated_message"
-    echo "-------------------------"
-    echo ""
+	echo "Generated commit message:"
+	echo "-------------------------"
+	echo "$generated_message"
+	echo "-------------------------"
+	echo ""
 
-    read -p "Do you want to use or edit this commit message? (y/n/e): " choice
+	read -p "Do you want to use or edit this commit message? (y/n/e): " choice
 
-    case "${choice,,}" in
-        y|yes)
-            git commit -m "$generated_message"
-            echo "Changes committed with the generated message."
-            ;;
-        n|no)
-            echo "Generated commit message only (not committed):"
-            echo "$generated_message"
-            ;;
-        e|edit)
-            git commit -m "$generated_message" --edit
-            echo "Changes committed with the edited message."
-            ;;
-        *)
-            echo "Invalid input. Commit aborted."
-            ;;
-    esac
+	case "${choice,,}" in
+	y | yes)
+		git commit -m "$generated_message"
+		echo "Changes committed with the generated message."
+		;;
+	n | no)
+		echo "Generated commit message only (not committed):"
+		echo "$generated_message"
+		;;
+	e | edit)
+		git commit -m "$generated_message" --edit
+		echo "Changes committed with the edited message."
+		;;
+	*)
+		echo "Invalid input. Commit aborted."
+		;;
+	esac
 }
 
 # Main script logic
 function main() {
-    check_dependencies
+	check_dependencies
 
-    local diff
-    diff=$(get_git_diff)
+	local diff
+	diff=$(get_git_diff)
 
-    if [ -z "$diff" ]; then
-        error_exit "No changes to commit"
-    fi
+	if [ -z "$diff" ]; then
+		error_exit "No changes to commit"
+	fi
 
-    check_ollama_service_and_model
+	check_ollama_service_and_model
 
-    local commit_message
-    echo "Generating commit message with Ollama..."
-    commit_message=$(generate_commit_message "$diff")
+	local commit_message
+	echo "Generating commit message with Ollama..."
+	commit_message=$(generate_commit_message "$diff")
 
-    if [ -z "$commit_message" ]; then
-        error_exit "Failed to generate commit message"
-    fi
+	if [ -z "$commit_message" ]; then
+		error_exit "Failed to generate commit message"
+	fi
 
-    confirm_commit "$commit_message"
+	confirm_commit "$commit_message"
 }
 
 main
